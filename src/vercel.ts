@@ -202,6 +202,4 @@ app.use((err: unknown, _req: Request, res: Response, _next: express.NextFunction
 });
 
 // Export the Express app for Vercel
-export default function handler(req: Request, res: Response) {
-  return app(req, res);
-}
+export default app;

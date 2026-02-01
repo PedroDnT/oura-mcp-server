@@ -70,7 +70,7 @@ function initializeClient() {
 
   if (!accessToken) {
     console.error(
-      "ERROR: OURA_ACCESS_TOKEN environment variable is required.\\n" +
+      "ERROR: OURA_ACCESS_TOKEN environment variable is required.\n" +
         "Get your access token from: https://cloud.ouraring.com/oauth/applications"
     );
     process.exit(1);
@@ -109,7 +109,7 @@ function truncateIfNeeded(text: string, structured: any): { text: string; struct
 
   const truncated = text.substring(0, CHARACTER_LIMIT);
   const warning =
-    "\\n\\n---\\n**⚠️ Response truncated due to size limit. Use smaller date ranges or specific filters to see complete data.**";
+    "\n\n---\n**⚠️ Response truncated due to size limit. Use smaller date ranges or specific filters to see complete data.**";
 
   return {
     text: truncated + warning,
