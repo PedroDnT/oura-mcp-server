@@ -14,7 +14,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import express from "express";
+import express, { type Express } from "express";
 import { z } from "zod";
 import { OuraClient } from "./services/ouraClient.js";
 import {
@@ -71,7 +71,7 @@ function initializeClient() {
   if (!accessToken) {
     console.error(
       "ERROR: OURA_ACCESS_TOKEN environment variable is required.\n" +
-        "Get your access token from: https://cloud.ouraring.com/oauth/applications"
+      "Get your access token from: https://cloud.ouraring.com/oauth/applications"
     );
     process.exit(1);
   }
@@ -1225,13 +1225,13 @@ function analyzeHealthData(data: {
   if (data.stress.length > 0) {
     insights.stress.avg_stress_time = Math.round(
       data.stress.reduce((sum, d) => sum + d.stress_high, 0) /
-        data.stress.length /
-        60
+      data.stress.length /
+      60
     );
     insights.stress.avg_recovery_time = Math.round(
       data.stress.reduce((sum, d) => sum + d.recovery_high, 0) /
-        data.stress.length /
-        60
+      data.stress.length /
+      60
     );
     insights.stress.stressed_days = data.stress.filter(
       (d) => d.day_summary === "stressed"
@@ -1392,47 +1392,41 @@ async function runStdio() {
   console.error("🔬 Evidence-based analysis with scientific references");
 }
 
-/**
- * Run server with HTTP transport (for web hosting)
- */
-async function runHTTP() {
+function createHttpApp(): Express {
   initializeClient();
 
   const app = express();
   app.use(express.json());
 
-  // Health check endpoint
-  app.get('/health', (req, res) => {
+  app.get("/health", (_req, res) => {
     res.json({
-      status: 'healthy',
-      service: 'oura-mcp-server',
-      version: '1.0.0',
-      transport: 'http',
+      status: "healthy",
+      service: "oura-mcp-server",
+      version: "1.0.0",
+      transport: "http",
       tools: 9,
       features: [
-        'Maximum data granularity (5-min intervals)',
-        'Evidence-based health insights',
-        'Scientific protocol recommendations',
-        'Comprehensive analysis reports'
-      ]
+        "Maximum data granularity (5-min intervals)",
+        "Evidence-based health insights",
+        "Scientific protocol recommendations",
+        "Comprehensive analysis reports",
+      ],
     });
   });
 
-  // MCP endpoint
-  app.post('/mcp', async (req, res) => {
+  app.post("/mcp", async (req, res) => {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
 
-    res.on('close', () => transport.close());
+    res.on("close", () => transport.close());
 
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   });
 
-  // Documentation endpoint
-  app.get('/', (req, res) => {
+  app.get("/", (_req, res) => {
     res.send(`
       <!DOCTYPE html>
       <html>
@@ -1514,151 +1508,58 @@ async function runHTTP() {
     `);
   });
 
-  const port = parseInt(process.env.PORT || '3000');
+  app.all("*", (_req, res) => {
+    res.status(404).json({
+      error: "Not Found",
+      message: "Available endpoints: GET /, GET /health, POST /mcp",
+    });
+  });
 
-  // Only call listen() if not on Vercel (Vercel handles this)
-  if (process.env.VERCEL !== '1') {
-    app.listen(port, () => {
+  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Unhandled HTTP error:", err);
+    if (res.headersSent) return;
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: "An unexpected error occurred.",
+    });
+  });
+
+  return app;
+}
+
+async function runHTTP(appInstance: Express): Promise<void> {
+  const port = parseInt(process.env.PORT || "3000", 10);
+
+  await new Promise<void>((resolve) => {
+    appInstance.listen(port, () => {
       console.error(`✅ Oura MCP Server running on http://localhost:${port}`);
       console.error(`🔗 MCP endpoint: http://localhost:${port}/mcp`);
       console.error(`📊 Health check: http://localhost:${port}/health`);
       console.error(`📖 Documentation: http://localhost:${port}`);
-      console.error(`🔬 Evidence-based analysis with scientific references`);
+      console.error("🔬 Evidence-based analysis with scientific references");
+      resolve();
     });
-  }
-
-  return app;
+  });
 }
+
+const httpApp = createHttpApp();
 
 /**
  * Main entry point - chooses transport based on environment
  */
 async function main() {
-  const transport = process.env.TRANSPORT || 'stdio';
+  const transport = process.env.TRANSPORT || "stdio";
 
-  if (transport === 'http') {
-    return await runHTTP();
+  if (transport === "http") {
+    await runHTTP(httpApp);
   } else {
     await runStdio();
   }
 }
 
-// For Vercel serverless deployment
-if (process.env.VERCEL === '1' || process.env.TRANSPORT === 'http') {
-  initializeClient();
-  const app = express();
-  app.use(express.json());
+export default httpApp;
 
-  // Health check endpoint
-  app.get('/health', (req, res) => {
-    res.json({
-      status: 'healthy',
-      service: 'oura-mcp-server',
-      version: '1.0.0',
-      transport: 'http',
-      tools: 9,
-      features: [
-        'Maximum data granularity (5-min intervals)',
-        'Evidence-based health insights',
-        'Scientific protocol recommendations',
-        'Comprehensive analysis reports'
-      ]
-    });
-  });
-
-  // MCP endpoint
-  app.post('/mcp', async (req, res) => {
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
-
-    res.on('close', () => transport.close());
-
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-  });
-
-  // Documentation endpoint
-  app.get('/', (req, res) => {
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Oura MCP Server</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              max-width: 800px;
-              margin: 40px auto;
-              padding: 20px;
-              line-height: 1.6;
-              color: #333;
-            }
-            h1 { color: #0066cc; border-bottom: 3px solid #0066cc; padding-bottom: 10px; }
-            h2 { color: #0088cc; margin-top: 30px; }
-            code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
-            .feature {
-              background: #f8f9fa;
-              padding: 15px;
-              margin: 10px 0;
-              border-left: 4px solid #0066cc;
-              border-radius: 4px;
-            }
-            ul { padding-left: 20px; }
-            li { margin: 8px 0; }
-          </style>
-        </head>
-        <body>
-          <h1>🏥 Oura MCP Server</h1>
-          <p><strong>Evidence-Based Health Insights with Maximum Data Granularity</strong></p>
-
-          <div class="feature">
-            <strong>✅ Server Status:</strong> Running<br>
-            <strong>🔗 API Version:</strong> Oura API v2<br>
-            <strong>🛠️ Tools Available:</strong> 9 comprehensive health data tools<br>
-            <strong>🔬 Scientific Analysis:</strong> 60+ peer-reviewed research citations
-          </div>
-
-          <h2>📊 Features</h2>
-          <div class="feature">
-            <strong>⌚ Maximum Granularity Data</strong><br>
-            Heart rate at 5-minute intervals, HRV, detailed sleep stages, and more
-          </div>
-          <div class="feature">
-            <strong>🔬 Scientific Insights</strong><br>
-            All recommendations backed by peer-reviewed research and evidence-based protocols
-          </div>
-          <div class="feature">
-            <strong>🎯 9 Comprehensive Tools</strong><br>
-            From granular biometrics to AI-powered health analysis
-          </div>
-
-          <h2>🔗 Endpoints</h2>
-          <ul>
-            <li><code>POST /mcp</code> - MCP protocol endpoint</li>
-            <li><code>GET /health</code> - Health check</li>
-            <li><code>GET /</code> - This documentation</li>
-          </ul>
-
-          <h2>🔐 Authentication</h2>
-          <p>Requires <code>OURA_ACCESS_TOKEN</code> environment variable to be set.</p>
-
-          <h2>📖 Documentation</h2>
-          <p>See README.md for complete documentation, tool descriptions, and usage examples.</p>
-
-          <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d;">
-            <p>Powered by Oura API v2 | MCP SDK 1.6 | Built for health optimization</p>
-          </footer>
-        </body>
-      </html>
-    `);
-  });
-
-  module.exports = app;
-  exports.default = app;
-} else {
-  // Run normally for local development
+if (process.env.VERCEL !== "1") {
   main().catch((error) => {
     console.error("❌ Fatal error:", error);
     process.exit(1);
