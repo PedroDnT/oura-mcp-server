@@ -11,6 +11,7 @@ Access all your Oura health data with the highest level of detail available:
 - 😴 Detailed sleep data with HRV, movement, and hypnograms
 - 🏃 Complete activity, workout, and recovery metrics
 - 📊 Comprehensive health insights and trend analysis
+- 🧪 Science dashboards with correlations, lag effects, and derived features
 - 🎯 Personalized recommendations for health optimization
 
 ---
@@ -45,7 +46,16 @@ Access all your Oura health data with the highest level of detail available:
   - Sleep quality and duration
   - Recovery and readiness
   - Activity levels and training load
-  - Stress management
+- Stress management
+
+### 🧪 Science Dashboards
+
+**Dashboards in the web UI:**
+- Correlation heatmaps + drilldown scatter plots
+- Lag effects (e.g., activity → next-day readiness)
+- Bedtime consistency distribution + sleep score impact
+- Stress vs sleep efficiency coupling
+- SpO2/breathing disturbance vs recovery
 
 ---
 
@@ -75,10 +85,10 @@ Access all your Oura health data with the highest level of detail available:
 4. **Get your Oura OAuth access token:**
    - Go to https://cloud.ouraring.com/oauth/applications
    - Create a new OAuth application
-   - Note your Client ID and Client Secret
-   - Use the OAuth credentials you have:
-     - Client ID: `a19495aa-9d93-46c3-829b-63ab4d1dfaeb`
-     - Client Secret: `etJFzARKoCR4TX2xnY3JCElvaLB_oUSWJM2ycL3aiPs`
+   - Note your Client ID and Client Secret (do not commit them)
+   - Use either:
+     - An OAuth access token (recommended), or
+     - A Personal Access Token (PAT) for quick testing (Oura may deprecate PATs)
 
 ### Integration with Claude Desktop
 
@@ -105,6 +115,42 @@ Add to your `claude_desktop_config.json`:
 
 **Important:** Replace `/path/to/oura-mcp-server` with the actual path and add your OAuth access token.
 
+---
+
+## 🌐 Web UI + HTTP (Vercel / multi-user)
+
+This project also supports a Vercel-deployable web UI and HTTP APIs:
+
+- `GET /` — web UI (paste token, run tools, charts + tables, download JSON)
+- `GET /oauth/start` — OAuth login (redirects to Oura)
+- `GET /oauth/callback` — OAuth callback (sets encrypted HttpOnly session cookie)
+- `POST /api/tools/call` — call a tool (cookie session or Authorization header)
+- `POST /mcp` — JSON-RPC (`initialize`, `tools/list`, `tools/call`)
+
+### Required environment variables (HTTP / multi-user)
+
+- `SESSION_SECRET` — required to encrypt the HttpOnly cookie session (32+ bytes recommended)
+
+### OAuth login (recommended for maximum user integration)
+
+Instead of manually pasting a token, you can enable OAuth 2.0 authorization-code login:
+
+1. Create an OAuth application in the Oura Cloud dashboard.
+2. Configure the Redirect URI to point to your deployed server:
+   - Example: `https://YOUR_DEPLOYMENT_DOMAIN/oauth/callback`
+3. Set these environment variables (locally or on Vercel):
+   - `OURA_OAUTH_CLIENT_ID`
+   - `OURA_OAUTH_CLIENT_SECRET`
+   - `OURA_OAUTH_REDIRECT_URI` (must match your Oura app config exactly)
+   - `OURA_OAUTH_SCOPES` (optional; defaults to `daily heartrate personal sleep workout session tag`)
+
+After that, open the web UI and click “Connect with Oura”.
+
+### Token handling
+
+- Browser UI: token stored in an encrypted HttpOnly cookie session.
+- Programmatic clients: send `Authorization: Bearer <token>` (overrides cookie).
+
 ### Restart Claude Desktop
 
 After updating the config, restart Claude Desktop to load the MCP server.
@@ -112,6 +158,8 @@ After updating the config, restart Claude Desktop to load the MCP server.
 ---
 
 ## 🛠️ Available Tools
+
+**Pagination (list endpoints):** Most list tools accept `page_limit` and `max_records`. If `end_date` is omitted, it defaults to `start_date`. If `end_datetime` is omitted, it defaults to “now.”
 
 ### 1. `oura_get_heartrate`
 **Get heart rate at 5-minute intervals** - Most granular cardiovascular data
@@ -226,7 +274,7 @@ Show all my workouts from last month
 ---
 
 ### 8. `oura_get_personal_info`
-**Get personal information** - User profile and ring configuration
+**Get personal information** - User profile fields (age, sex, height, weight, email)
 
 **Parameters:**
 - `response_format` ('markdown' | 'json'): Output format
@@ -272,6 +320,47 @@ What patterns do you see in my sleep, activity, and recovery over the last 30 da
 - 🔍 Key insights and health alerts
 
 ---
+
+### 10. `oura_generate_science_dashboards` 🧪
+**Generate science dashboards** - Correlations, lag effects, and derived features
+
+**Parameters:**
+- `start_date` (string): Analysis period start (YYYY-MM-DD)
+- `end_date` (string): Analysis period end (YYYY-MM-DD)
+- `correlation_method` ('spearman' | 'pearson'): Default `spearman`
+- `max_lag_days` (number): Default 7
+- `response_format` ('markdown' | 'json'): Output format
+
+**What You Get:**
+- Joined per-day table with derived features (bedtime consistency, stage proportions, training load)
+- Correlation matrix + detrended correlation matrix
+- Lag analysis (activity/stress/sleep → readiness)
+- Dashboard cards with chart-ready data
+
+---
+
+### 11. `oura_get_raw_endpoint`
+**Escape hatch** - Fetch raw JSON from any supported Oura v2 endpoint
+
+**Parameters:**
+- `endpoint` (string): Oura v2 usercollection endpoint
+- `params` (object): Query params
+- `page_limit` / `max_records` (optional)
+- `response_format` ('markdown' | 'json')
+
+---
+
+### Additional Endpoint Tools
+- `oura_get_daily_resilience`
+- `oura_get_daily_spo2`
+- `oura_get_daily_cardiovascular_age`
+- `oura_get_vo2_max`
+- `oura_get_sleep_time`
+- `oura_get_session`
+- `oura_get_enhanced_tag`
+- `oura_get_tag`
+- `oura_get_rest_mode_period`
+- `oura_get_ring_configuration`
 
 ## 📖 Example Use Cases
 
@@ -339,6 +428,8 @@ You have two options:
 | Sleep Score | Per day | `oura_get_daily_sleep` |
 | Readiness Score | Per day | `oura_get_daily_readiness` |
 | Stress Levels | Per day | `oura_get_daily_stress` |
+
+**Granularity limits:** Oura’s public API tops out at 5‑minute heart rate, 5‑minute sleep stages, and 30‑second sleep movement where available. Raw/second‑level streams are not exposed.
 
 ---
 

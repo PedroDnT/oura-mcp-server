@@ -18,15 +18,6 @@ Before starting, ensure you have:
 
 ## 🔐 Step 1: Get OAuth Credentials
 
-### You Already Have Credentials!
-
-You've already created an OAuth application with these credentials:
-
-```
-Client ID: a19495aa-9d93-46c3-829b-63ab4d1dfaeb
-Client Secret: etJFzARKoCR4TX2xnY3JCElvaLB_oUSWJM2ycL3aiPs
-```
-
 ### Generate Access Token
 
 Since this MCP server requires a **Bearer token** for authentication, you need to complete the OAuth flow to get an access token.
@@ -42,6 +33,20 @@ For now, you can use a **Personal Access Token**:
 5. **Save it securely** - you'll need it for configuration
 
 **Note:** Personal Access Tokens are being deprecated. For production use, implement a full OAuth 2.0 flow.
+
+---
+
+## 🌐 Optional: Web UI / Vercel mode (multi-user)
+
+This server can also run as a web app (useful for Vercel):
+
+- `GET /` — UI (paste token, run tools, view charts/tables)
+- `POST /api/tools/call` — call tools via cookie session or `Authorization` header
+- `POST /mcp` — JSON-RPC endpoint (`initialize`, `tools/list`, `tools/call`)
+
+### Required env var
+
+- `SESSION_SECRET` — required to encrypt the HttpOnly cookie session (32+ bytes recommended)
 
 ---
 

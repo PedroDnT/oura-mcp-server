@@ -167,6 +167,14 @@ export interface DailySpo2 {
   timestamp: string;
 }
 
+export interface DailyCardiovascularAge {
+  id: string;
+  day: string;
+  cardiovascular_age: number;
+  timestamp: string;
+  [key: string]: unknown;
+}
+
 export interface Workout {
   id: string;
   activity: string;
@@ -194,6 +202,17 @@ export interface VO2Max {
   timestamp: string;
 }
 
+export interface SleepTime {
+  id: string;
+  day: string;
+  bedtime_start: string;
+  bedtime_end: string;
+  total_sleep_duration?: number;
+  time_in_bed?: number;
+  efficiency?: number;
+  [key: string]: unknown;
+}
+
 export interface EnhancedTag {
   id: string;
   tag_type_code: string;
@@ -203,6 +222,26 @@ export interface EnhancedTag {
   end_day: string;
   comment: string | null;
   timestamp: string;
+}
+
+export interface Tag {
+  id: string;
+  tag_type_code?: string;
+  start_time?: string;
+  end_time?: string;
+  day?: string;
+  comment?: string | null;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+
+export interface RestModePeriod {
+  id: string;
+  start_date: string;
+  end_date: string;
+  reason?: string | null;
+  timestamp?: string;
+  [key: string]: unknown;
 }
 
 export interface PersonalInfo {
@@ -221,4 +260,14 @@ export interface RingConfiguration {
   firmware_version: string;
   hardware_type: string;
   set_up_at: string;
+}
+
+export interface Session {
+  id: string;
+  day?: string;
+  start_datetime?: string;
+  end_datetime?: string;
+  type?: string;
+  mood?: string | null;
+  [key: string]: unknown;
 }

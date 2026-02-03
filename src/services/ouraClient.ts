@@ -21,9 +21,9 @@ export class OuraClient {
   }
 
   /**
-   * Make authenticated request to Oura API
+   * Make authenticated request to Oura API (single page)
    */
-  async makeRequest<T>(
+  async makeRequestPage<T>(
     endpoint: string,
     params?: Record<string, string | number | undefined>
   ): Promise<T> {
@@ -44,6 +44,63 @@ export class OuraClient {
     } catch (error) {
       throw this.handleApiError(error);
     }
+  }
+
+  /**
+   * Make authenticated request (backwards-compatible name)
+   */
+  async makeRequest<T>(
+    endpoint: string,
+    params?: Record<string, string | number | undefined>
+  ): Promise<T> {
+    return this.makeRequestPage<T>(endpoint, params);
+  }
+
+  /**
+   * Fetch all pages for list endpoints that return { data, next_token }
+   */
+  async makeRequestAllPages<T extends { data: any[]; next_token: string | null }>(
+    endpoint: string,
+    params?: Record<string, string | number | undefined>,
+    opts?: { maxPages?: number; maxItems?: number }
+  ): Promise<T> {
+    const maxPages = opts?.maxPages ?? 10;
+    const maxItems = opts?.maxItems ?? 10000;
+
+    let nextToken: string | null = null;
+    let page = 0;
+    const collected: any[] = [];
+    let lastResponse: T | null = null;
+
+    do {
+      const response: T = await this.makeRequestPage<T>(endpoint, {
+        ...(params ?? {}),
+        next_token: nextToken ?? undefined,
+      });
+      lastResponse = response;
+
+      const items = Array.isArray(response?.data) ? response.data : [];
+      collected.push(...items);
+
+      if (collected.length >= maxItems) {
+        collected.length = maxItems;
+        nextToken = null;
+        break;
+      }
+
+      nextToken = response?.next_token ?? null;
+      page += 1;
+    } while (nextToken && page < maxPages);
+
+    if (!lastResponse) {
+      return { data: [], next_token: null } as unknown as T;
+    }
+
+    return {
+      ...(lastResponse as any),
+      data: collected,
+      next_token: nextToken && page < maxPages ? nextToken : null,
+    };
   }
 
   /**
