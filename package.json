@@ -15,7 +15,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "axios": "^1.7.9",
     "express": "^4.18.2",
     "l": "^0.6.0",
